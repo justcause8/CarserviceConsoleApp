@@ -9,10 +9,11 @@ class Program
     static async Task Main()
     {
         var serviceProvider = new ServiceCollection()
-            .AddDbContext<CarserviceContext>(options =>
+            .AddDbContextFactory<CarserviceContext>(options =>
                 options.UseSqlServer("Server=localhost;Database=carservice;Trusted_Connection=True;TrustServerCertificate=true;"))
             .AddSingleton<DataGenerator>()
             .BuildServiceProvider();
+
 
         var generator = serviceProvider.GetRequiredService<DataGenerator>();
 
@@ -27,7 +28,6 @@ class Program
             Console.WriteLine($"Ошибка: {ex.Message}");
         }
 
-       
-        //generator.ClearDatabase();
+        //await generator.ClearDatabaseAsync();
     }
 }
