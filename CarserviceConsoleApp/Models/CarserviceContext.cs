@@ -58,7 +58,7 @@ public partial class CarserviceContext : DbContext
 
             entity.HasOne(d => d.Client).WithMany(p => p.Cars)
                 .HasForeignKey(d => d.ClientId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Cars_fk1");
         });
 
@@ -121,7 +121,7 @@ public partial class CarserviceContext : DbContext
 
             entity.HasOne(d => d.Car).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.CarId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Orders_fk1");
 
             entity.HasOne(d => d.Client).WithMany(p => p.Orders)
@@ -144,12 +144,12 @@ public partial class CarserviceContext : DbContext
 
             entity.HasOne(d => d.Employee).WithMany(p => p.OrderAssignments)
                 .HasForeignKey(d => d.EmployeeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Order_assignments_fk2");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderAssignments)
                 .HasForeignKey(d => d.OrderId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Order_assignments_fk1");
         });
 
@@ -168,12 +168,12 @@ public partial class CarserviceContext : DbContext
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderParts)
                 .HasForeignKey(d => d.OrderId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Order_parts_fk1");
 
             entity.HasOne(d => d.Part).WithMany(p => p.OrderParts)
                 .HasForeignKey(d => d.PartId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Order_parts_fk2");
         });
 
@@ -191,12 +191,12 @@ public partial class CarserviceContext : DbContext
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderServices)
                 .HasForeignKey(d => d.OrderId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Order_services_fk1");
 
             entity.HasOne(d => d.Service).WithMany(p => p.OrderServices)
                 .HasForeignKey(d => d.ServiceId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
+                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("Order_services_fk2");
         });
 
@@ -232,11 +232,13 @@ public partial class CarserviceContext : DbContext
 
             entity.HasOne(sp => sp.Service)
                 .WithMany(s => s.ServiceParts)
-                .HasForeignKey(sp => sp.ServiceId);
+                .HasForeignKey(sp => sp.ServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(sp => sp.Part)
                 .WithMany(p => p.ServiceParts)
-                .HasForeignKey(sp => sp.PartId);
+                .HasForeignKey(sp => sp.PartId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

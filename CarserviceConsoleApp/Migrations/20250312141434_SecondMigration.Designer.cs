@@ -4,6 +4,7 @@ using CarserviceConsoleApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CarserviceConsoleApp.Migrations
 {
     [DbContext(typeof(CarserviceContext))]
-    partial class CarserviceContextModelSnapshot : ModelSnapshot
+    [Migration("20250312141434_SecondMigration")]
+    partial class SecondMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -359,7 +362,6 @@ namespace CarserviceConsoleApp.Migrations
                     b.HasOne("CarserviceConsoleApp.Models.Client", "Client")
                         .WithMany("Cars")
                         .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("Cars_fk1");
 
@@ -382,7 +384,6 @@ namespace CarserviceConsoleApp.Migrations
                     b.HasOne("CarserviceConsoleApp.Models.Car", "Car")
                         .WithMany("Orders")
                         .HasForeignKey("CarId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("Orders_fk1");
 
@@ -423,14 +424,12 @@ namespace CarserviceConsoleApp.Migrations
                     b.HasOne("CarserviceConsoleApp.Models.Order", "Order")
                         .WithMany("OrderParts")
                         .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("Order_parts_fk1");
 
                     b.HasOne("CarserviceConsoleApp.Models.Part", "Part")
                         .WithMany("OrderParts")
                         .HasForeignKey("PartId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("Order_parts_fk2");
 
@@ -444,14 +443,12 @@ namespace CarserviceConsoleApp.Migrations
                     b.HasOne("CarserviceConsoleApp.Models.Order", "Order")
                         .WithMany("OrderServices")
                         .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("Order_services_fk1");
 
                     b.HasOne("CarserviceConsoleApp.Models.Service", "Service")
                         .WithMany("OrderServices")
                         .HasForeignKey("ServiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("Order_services_fk2");
 

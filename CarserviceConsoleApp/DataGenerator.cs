@@ -1,7 +1,9 @@
 ﻿using Bogus;
+using CarserviceConsoleApp;
 using CarserviceConsoleApp.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 public class DataGenerator
 {
@@ -12,72 +14,20 @@ public class DataGenerator
         _contextFactory = contextFactory;
     }
 
-    private static readonly Dictionary<string, string[]> serviceToParts = new()
-    {
-        { "Замена масла", new[] { "Масляный фильтр" } },
-        { "Замена тормозных колодок", new[] { "Тормозные колодки" } },
-        { "Ремонт двигателя", new[] { "Свечи зажигания", "Топливный фильтр", "Лямбда-зонд" } },
-        { "Ремонт ходовой части", new[] { "Амортизаторы", "Шаровые опоры", "Подшипники ступицы" } },
-        { "Диагностика автомобиля", new[] { "Датчик давления масла", "Лямбда-зонд" } },
-        { "Шиномонтаж", new[] { "Тормозные диски", "Тормозные колодки" } },
-        { "Замена воздушного фильтра", new[] { "Воздушный фильтр" } },
-        { "Ремонт электроники", new[] { "Лямбда-зонд", "Датчик давления масла" } },
-        { "Покраска кузова", new[] { "Лобовое стекло" } },
-        { "Ремонт топливной системы", new[] { "Топливный фильтр" } },
-        { "Замена свечей зажигания", new[] { "Свечи зажигания" } },
-        { "Ремонт коробки передач", new[] { "Выжимной подшипник", "Колодки сцепления" } },
-        { "Установка сигнализации", new[] { "Аккумулятор" } },
-        { "Ремонт кондиционера", new[] { "Насос гидроусилителя" } },
-        { "Замена лобового стекла", new[] { "Лобовое стекло" } },
-        { "Чистка радиатора", new[] { "Радиатор охлаждения" } },
-        { "Замена ремня ГРМ", new[] { "Ремень ГРМ" } },
-        { "Ремонт подвески", new[] { "Амортизаторы", "Стойки стабилизатора" } },
-        { "Замена аккумулятора", new[] { "Аккумулятор" } },
-        { "Техническое обслуживание", new[] { "Масляный фильтр", "Воздушный фильтр", "Свечи зажигания" } }
-    };
-
-    private static readonly Dictionary<string, (int Min, int Max)> partPrices = new()
-    {
-        { "Тормозные колодки", (1000, 3000) },
-        { "Масляный фильтр", (200, 800) },
-        { "Воздушный фильтр", (300, 1000) },
-        { "Свечи зажигания", (500, 2000) },
-        { "Аккумулятор", (4000, 15000) },
-        { "Ремень ГРМ", (1500, 5000) },
-        { "Топливный фильтр", (400, 1200) },
-        { "Амортизаторы", (2000, 8000) },
-        { "Стойки стабилизатора", (1000, 4000) },
-        { "Радиатор охлаждения", (3000, 12000) },
-        { "Термостат", (800, 3000) },
-        { "Насос гидроусилителя", (2500, 10000) },
-        { "Шаровые опоры", (1500, 6000) },
-        { "Рулевые тяги", (1000, 5000) },
-        { "Тормозные диски", (2000, 8000) },
-        { "Подшипники ступицы", (1000, 4000) },
-        { "Колодки сцепления", (1500, 6000) },
-        { "Выжимной подшипник", (2000, 8000) },
-        { "Лямбда-зонд", (1500, 7000) },
-        { "Датчик давления масла", (500, 2500) },
-        { "Лобовое стекло", (5000, 20000) }
-    };
-
     public async Task GenerateDataAsync()
     {
         var tasks = new List<Task>();
-
-        tasks.Add(GeneratePartsAsync());
-        tasks.Add(GenerateServicesAsync());
-        tasks.Add(GenerateClientsAsync());
-        tasks.Add(GenerateEmployeesAsync());
-        tasks.Add(GenerateCarsAsync());
-        tasks.Add(GenerateInventoryAsync());
-        tasks.Add(GenerateOrdersAsync());
-        tasks.Add(GenerateOrderPartsAsync());
-        tasks.Add(GenerateOrderAssignmentsAsync());
-        tasks.Add(GenerateOrderServicesAsync());
-
+        tasks.Add(GeneratePartsAsync()); // Генерация запчастей
+        tasks.Add(GenerateServicesAsync()); // Генерация услуг
+        tasks.Add(GenerateClientsAsync()); // Генерация клиентов
+        tasks.Add(GenerateEmployeesAsync()); // Генерация сотрудников
+        tasks.Add(GenerateCarsAsync()); // Генерация автомобилей
+        tasks.Add(GenerateInventoryAsync()); // Генерация склада
+        tasks.Add(GenerateOrdersAsync()); // Генерация заказов
+        tasks.Add(GenerateOrderPartsAsync()); // Генерация частей заказов
+        tasks.Add(GenerateOrderServicesAsync()); // Генерация услуг заказов
+        tasks.Add(GenerateOrderAssignmentsAsync()); // Генерация назначений сотрудников
         await Task.WhenAll(tasks);
-
         Console.WriteLine("Данные успешно сгенерированы!");
     }
 
@@ -88,27 +38,25 @@ public class DataGenerator
         if (!await context.Parts.AnyAsync())
         {
             Console.WriteLine("Генерация запчастей...");
-            var partNames = serviceToParts.Values.SelectMany(parts => parts).Distinct().ToArray();
+            var partNames = DataConstants.ServiceToParts.Values.SelectMany(parts => parts).Distinct().ToArray();
             var partsFaker = new Faker<Part>()
                 .RuleFor(i => i.Name, f => f.PickRandom(partNames))
                 .RuleFor(i => i.Price, (f, part) =>
                 {
-                    // Получаем диапазон цен для текущей запчасти
-                    if (partPrices.TryGetValue(part.Name, out var priceRange))
+                    if (DataConstants.PartPrices.TryGetValue(part.Name, out var priceRange))
                     {
                         return f.Random.Number(priceRange.Min, priceRange.Max);
                     }
-                    return f.Random.Number(100, 50000); // Если диапазон не найден, используем общий диапазон
+                    return f.Random.Number(100, 50000);
                 });
 
             var parts = partsFaker.Generate(partNames.Length);
             await context.Parts.AddRangeAsync(parts);
             await context.SaveChangesAsync();
-            
             Console.WriteLine("Запчасти успешно добавлены!");
         }
-        
     }
+
 
     private async Task GenerateServicesAsync()
     {
@@ -118,10 +66,10 @@ public class DataGenerator
             Console.WriteLine("Генерация услуг...");
 
             var servicesFaker = new Faker<Service>()
-                .RuleFor(s => s.Name, f => f.PickRandom(serviceToParts.Keys.ToArray()))
+                .RuleFor(s => s.Name, f => f.PickRandom(DataConstants.ServiceToParts.Keys.ToArray()))
                 .RuleFor(s => s.Price, f => f.Random.Number(500, 30000));
 
-            var services = servicesFaker.Generate(serviceToParts.Count);
+            var services = servicesFaker.Generate(DataConstants.ServiceToParts.Count);
             await context.Services.AddRangeAsync(services);
             await context.SaveChangesAsync();
 
@@ -133,7 +81,7 @@ public class DataGenerator
 
             foreach (var service in savedServices)
             {
-                if (serviceToParts.TryGetValue(service.Name, out var partNames))
+                if (DataConstants.ServiceToParts.TryGetValue(service.Name, out var partNames))
                 {
                     foreach (var partName in partNames)
                     {
@@ -194,7 +142,8 @@ public class DataGenerator
             Console.WriteLine("Генерация клиентов...");
 
             var batchSize = 1000;
-            var totalClients = 10000;    
+            //var totalClients = 10000;
+            var totalClients = 1000;
 
             var clientsFaker = new Faker<Client>()
                 .RuleFor(c => c.Name, f => f.Name.FullName())
@@ -223,41 +172,20 @@ public class DataGenerator
 
             if (!clientIds.Any()) return;
 
-            var carData = new Dictionary<string, string[]>
-            {
-                { "Toyota", new[] { "Corolla", "Camry", "RAV4", "Land Cruiser", "Prius", "Highlander", "Yaris", "Tacoma", "Sienna", "Tundra" } },
-                { "Porsche", new[] { "911", "Cayenne", "Panamera", "Macan", "Boxster", "Taycan", "718 Cayman" } },
-                { "Volvo", new[] { "XC90", "XC60", "S60", "V90", "S90", "XC40", "V60", "C40" } },
-                { "BMW", new[] { "X5", "3 Series", "5 Series", "7 Series", "X3", "X7", "M3", "M5", "Z4", "iX" } },
-                { "Mercedes-Benz", new[] { "C-Class", "E-Class", "S-Class", "GLC", "GLE", "GLA", "G-Class", "CLA", "A-Class", "EQS" } },
-                { "Ford", new[] { "F-150", "Mustang", "Explorer", "Escape", "Focus", "Fiesta", "Bronco", "Ranger", "Edge", "Transit" } },
-                { "Chevrolet", new[] { "Silverado", "Equinox", "Malibu", "Tahoe", "Suburban", "Corvette", "Camaro", "Trailblazer", "Spark", "Blazer" } },
-                { "Honda", new[] { "Civic", "Accord", "CR-V", "Pilot", "Odyssey", "HR-V", "Ridgeline", "Fit", "Passport", "Insight" } },
-                { "Nissan", new[] { "Altima", "Maxima", "Sentra", "Rogue", "Pathfinder", "Murano", "Titan", "Frontier", "Leaf", "GT-R" } },
-                { "Hyundai", new[] { "Elantra", "Sonata", "Tucson", "Santa Fe", "Kona", "Palisade", "Venue", "Ioniq", "Nexo", "Veloster" } },
-                { "Audi", new[] { "A3", "A4", "A6", "A8", "Q3", "Q5", "Q7", "Q8", "TT", "R8" } },
-                { "Volkswagen", new[] { "Golf", "Passat", "Jetta", "Tiguan", "Atlas", "Arteon", "Beetle", "ID.4", "Polo", "Up!" } },
-                { "Lexus", new[] { "ES", "IS", "RX", "NX", "GX", "LX", "UX", "LC", "LS", "LM" } },
-                { "Subaru", new[] { "Outback", "Forester", "Impreza", "Legacy", "Crosstrek", "WRX", "BRZ", "Ascent", "Levorg", "Exiga" } },
-                { "Mazda", new[] { "CX-5", "CX-9", "Mazda3", "Mazda6", "MX-5 Miata", "CX-30", "CX-3", "RX-7", "RX-8", "BT-50" } },
-                { "Kia", new[] { "Optima", "Sorento", "Sportage", "Soul", "Telluride", "Stinger", "Rio", "Niro", "Carnival", "EV6" } },
-            };
-
             var batchSize = 1000;
-            var totalCars = 30000;
+            //var totalCars = 30000;
+            var totalCars = 3000;
 
             var carFaker = new Faker<Car>()
-                .RuleFor(c => c.Brand, f => f.PickRandom(carData.Keys.ToArray())) // Выбираем случайный бренд
+                .RuleFor(c => c.Brand, f => f.PickRandom(DataConstants.carData.Keys.ToArray()))
                 .RuleFor(c => c.Model, (f, car) =>
                 {
-                    // Получаем список моделей для выбранного бренда
-                    var models = carData[car.Brand];
-                    // Выбираем случайную модель из списка
+                    var models = DataConstants.carData[car.Brand];
                     return f.PickRandom(models);
                 })
                 .RuleFor(c => c.Vin, f => f.Vehicle.Vin())
                 .RuleFor(c => c.Year, f => DateOnly.FromDateTime(f.Date.Between(DateTime.Now.AddYears(-20), DateTime.Now)))
-                .RuleFor(c => c.ClientId, f => f.PickRandom(clientIds)); // Теперь `clientIds` содержит список
+                .RuleFor(c => c.ClientId, f => f.PickRandom(clientIds));
 
             //var cars = carFaker.Generate(30000);
             //await context.Cars.AddRangeAsync(cars);
@@ -318,7 +246,8 @@ public class DataGenerator
             var clientIds = await context.Clients.Select(c => c.Id).ToListAsync();
 
             var batchSize = 1000;
-            var totalOrders = 40000;
+            //var totalOrders = 40000;
+            var totalOrders = 4000;
 
             var orderFaker = new Faker<Order>()
                .RuleFor(o => o.CarId, f => f.PickRandom(carIds))
@@ -362,7 +291,8 @@ public class DataGenerator
             var partIds = await context.Parts.Select(p => p.Id).ToListAsync();
 
             var batchSize = 1000;
-            var totalOrderParts = 50000;
+            //var totalOrderParts = 50000;
+            var totalOrderParts = 5000;
 
             var orderPartsFaker = new Faker<OrderPart>()
                 .RuleFor(op => op.OrderId, f => f.PickRandom(orderIds))
@@ -401,7 +331,8 @@ public class DataGenerator
             //}
 
             var batchSize = 1000;
-            var totalOrderServices = 50000;
+            //var totalOrderServices = 50000;
+            var totalOrderServices = 5000;
 
             var orderServicesFaker = new Faker<OrderService>()
                 .RuleFor(os => os.OrderId, f => f.PickRandom(orderIds))
@@ -439,7 +370,8 @@ public class DataGenerator
             //}
 
             var batchSize = 1000;
-            var totalOrderAssignments = 50000;
+            //var totalOrderAssignments = 50000;
+            var totalOrderAssignments = 5000;
 
             var orderAssignmentsFaker = new Faker<OrderAssignment>()
                 .RuleFor(oa => oa.OrderId, f => f.PickRandom(orderIds))
@@ -469,7 +401,6 @@ public class DataGenerator
 
             using var context = await _contextFactory.CreateDbContextAsync();
 
-            // Удаляем записи из таблиц в правильном порядке, учитывая связи
             await context.OrderParts.ExecuteDeleteAsync();
             await context.OrderServices.ExecuteDeleteAsync();
             await context.OrderAssignments.ExecuteDeleteAsync();
@@ -482,12 +413,17 @@ public class DataGenerator
             await context.Parts.ExecuteDeleteAsync();
             await context.Services.ExecuteDeleteAsync();
 
-            // Сбрасываем счетчики идентификаторов для таблиц с автоинкрементом
-            var tablesToReset = new[] { "Clients", "Cars", "Employees", "Orders", "Parts", "Services", "Inventories" };
-
-            foreach (var table in tablesToReset)
+            var entityTypes = context.Model.GetEntityTypes();
+            foreach (var entityType in entityTypes)
             {
-                await context.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT ('{table}', RESEED, 0)");
+                var tableName = entityType.GetTableName();
+                var identityColumn = entityType.GetProperties()
+                    .FirstOrDefault(p => p.ValueGenerated == ValueGenerated.OnAdd);
+
+                if (identityColumn != null && !string.IsNullOrEmpty(tableName))
+                {
+                    await context.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT ('{tableName}', RESEED, 0)");
+                }
             }
 
             Console.WriteLine("База данных успешно очищена.");
