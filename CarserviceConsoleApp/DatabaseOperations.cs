@@ -93,6 +93,7 @@ namespace CarserviceConsoleApp
                 Log($"Удален клиент с ID {clientId}. Имя: \"{clientName}\".");
             }
         }
+
         // Cars
         public async Task CreateCarAsync(Car car)
         {
@@ -106,6 +107,12 @@ namespace CarserviceConsoleApp
         {
             using var context = await _contextFactory.CreateDbContextAsync();
             return await context.Cars.Where(c => c.ClientId == clientId).ToListAsync();
+        }
+
+        public async Task<List<Car>> GetCarsAsync()
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Cars.ToListAsync();
         }
 
         public async Task UpdateCarAsync(int carId, string newBrand, string newModel)
@@ -147,7 +154,6 @@ namespace CarserviceConsoleApp
                 Log($"Удален автомобиль с ID {carId}. Был: {car.Brand} {car.Model}.");
             }
         }
-
 
         // Employees
         public async Task CreateEmployeeAsync(Employee employee)
@@ -476,6 +482,12 @@ namespace CarserviceConsoleApp
                 await context.SaveChangesAsync();
                 Console.WriteLine($"Обновлено назначение в заказе с ID {orderAssignment.OrderId}. Старый EmployeeID: {oldEmployeeId}, новый EmployeeID: {newEmployeeId}.");
             }
+        }
+
+        public async Task<List<Order>> GetOrdersAsync()
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Orders.ToListAsync();
         }
 
         public async Task DeleteOrderAssignmentAsync(int orderAssignmentId)

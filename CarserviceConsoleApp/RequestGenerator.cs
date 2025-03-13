@@ -1,5 +1,6 @@
 ﻿using Bogus;
 using CarserviceConsoleApp.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,11 +11,13 @@ namespace CarserviceConsoleApp
     public class RequestGenerator
     {
         private readonly DatabaseOperations _dbOperations;
+        private readonly DataGenerator _dataGenerator;
         private readonly Random _random = Random.Shared;
 
-        public RequestGenerator(DatabaseOperations dbOperations)
+        public RequestGenerator(DatabaseOperations dbOperations, DataGenerator dataGenerator)
         {
             _dbOperations = dbOperations;
+            _dataGenerator = dataGenerator;
         }
 
         public async Task GenerateRequestsAsync()
@@ -37,143 +40,197 @@ namespace CarserviceConsoleApp
 
         private async Task<List<Task>> GenerateClientTasksAsync(int i)
         {
-            var clientFaker = new Faker<Client>()
-                .RuleFor(c => c.Name, f => f.Name.FullName())
-                .RuleFor(c => c.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"));
-
+            var clients = await _dbOperations.GetClientsAsync();
             var tasks = new List<Task>();
-            var client = clientFaker.Generate();
-            tasks.Add(_dbOperations.CreateClientAsync(client));
-            tasks.Add(_dbOperations.GetClientsAsync());
 
-            // Генерация случайного имени для обновления клиента
-            var clientIdToUpdate = _random.Next(1, 100);
-            var updatedClientName = new Faker().Name.FullName(); // новое случайное имя
-            tasks.Add(_dbOperations.UpdateClientAsync(clientIdToUpdate, updatedClientName));
+            if (clients.Any())
+            {
+                // Создаем нового клиента без Id
+                var newClient = new Client
+                {
+                    Name = new Faker().Name.FullName(),
+                    Phone = new Faker().Phone.PhoneNumber("+7 (###) ### ## ##")
+                };
+                tasks.Add(_dbOperations.CreateClientAsync(newClient));
 
-            var clientIdToDelete = _random.Next(1, 100);
-            tasks.Add(_dbOperations.DeleteClientAsync(clientIdToDelete));
+                // Для обновления используем существующий Id
+                var clientIdToUpdate = clients.First().Id;
+                tasks.Add(_dbOperations.UpdateClientAsync(clientIdToUpdate, newClient.Name));
+
+                // Удаление случайного существующего клиента
+                var clientIdToDelete = clients[_random.Next(clients.Count)].Id;
+                tasks.Add(_dbOperations.DeleteClientAsync(clientIdToDelete));
+            }
 
             return tasks;
         }
 
         private async Task<List<Task>> GenerateCarTasksAsync(int i)
         {
-            var carFaker = new Faker<Car>()
-                .RuleFor(c => c.Brand, f => f.PickRandom(DataConstants.ServiceToParts.Keys.ToArray()))
-                .RuleFor(c => c.Model, (f, car) =>
-                {
-                    var models = DataConstants.ServiceToParts[car.Brand];
-                    return f.PickRandom(models);
-                })
+            var clients = await _dbOperations.GetClientsAsync();
+            var clientIds = clients.Select(c => c.Id).ToList();
+            if (!clientIds.Any()) return new List<Task>();
+
+            // Создание новой машины
+            var newCar = new Faker<Car>()
+                .RuleFor(c => c.Brand, f => f.Vehicle.Manufacturer())
+                .RuleFor(c => c.Model, f => f.Vehicle.Model())
                 .RuleFor(c => c.Vin, f => f.Vehicle.Vin())
-                .RuleFor(c => c.Year, f => DateOnly.FromDateTime(f.Date.Between(DateTime.Now.AddYears(-20), DateTime.Now)))
-                .RuleFor(c => c.ClientId, f => f.Random.Number(1, 100));
+                .RuleFor(c => c.Year, f => DateOnly.FromDateTime(f.Date.Past(20)))
+                .RuleFor(c => c.ClientId, f => f.PickRandom(clientIds))
+                .Generate();
 
-            var tasks = new List<Task>();
-            var car = carFaker.Generate();
-            tasks.Add(_dbOperations.CreateCarAsync(car));
+            var tasks = new List<Task>
+            {
+                _dbOperations.CreateCarAsync(newCar)
+            };
 
-            // Генерация случайных данных для обновления автомобиля
-            var carIdToUpdate = _random.Next(1, 100);
-            var updatedBrand = new Faker().Vehicle.Manufacturer(); // новое случайное имя бренда
-            var updatedModel = new Faker().Vehicle.Model(); // новое случайное имя модели
-            tasks.Add(_dbOperations.UpdateCarAsync(carIdToUpdate, updatedBrand, updatedModel));
+            // Обновление случайного автомобиля
+            var cars = await _dbOperations.GetCarsAsync();
+            if (cars.Any())
+            {
+                var carToUpdate = cars[_random.Next(cars.Count)];
+                tasks.Add(_dbOperations.UpdateCarAsync(
+                    carToUpdate.Id,
+                    new Faker().Vehicle.Manufacturer(),
+                    new Faker().Vehicle.Model()));
+            }
 
-            var carIdToDelete = _random.Next(1, 100);
-            tasks.Add(_dbOperations.DeleteCarAsync(carIdToDelete));
+            // Удаление случайного автомобиля
+            if (cars.Any())
+            {
+                var carToDelete = cars[_random.Next(cars.Count)];
+                tasks.Add(_dbOperations.DeleteCarAsync(carToDelete.Id));
+            }
 
             return tasks;
         }
 
         private async Task<List<Task>> GenerateEmployeeTasksAsync(int i)
         {
-            var employeeFaker = new Faker<Employee>()
+            var employees = await _dbOperations.GetEmployeesAsync();
+            if (!employees.Any()) return new List<Task>();
+
+            // Создание нового сотрудника
+            var newEmployee = new Faker<Employee>()
                 .RuleFor(e => e.Name, f => f.Name.FullName())
                 .RuleFor(e => e.Position, f => f.PickRandom(new[] { "Механик", "Старший механик", "Менеджер", "Руководитель" }))
-                .RuleFor(e => e.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"));
+                .RuleFor(e => e.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"))
+                .Generate();
 
-            var tasks = new List<Task>();
-            var employee = employeeFaker.Generate();
-            tasks.Add(_dbOperations.CreateEmployeeAsync(employee));
-            tasks.Add(_dbOperations.GetClientsAsync());
+            var tasks = new List<Task>
+            {
+                _dbOperations.CreateEmployeeAsync(newEmployee)
+            };
 
-            // Генерация случайного имени для обновления сотрудника
-            var employeeIdToUpdate = _random.Next(1, 100);
-            var updatedEmployeeName = new Faker().Name.FullName(); // новое случайное имя
-            tasks.Add(_dbOperations.UpdateEmployeeAsync(employeeIdToUpdate, updatedEmployeeName));
+            // Обновление случайного сотрудника
+            var employeeToUpdate = employees[_random.Next(employees.Count)];
+            tasks.Add(_dbOperations.UpdateEmployeeAsync(
+                employeeToUpdate.Id,
+                new Faker().Name.FullName()));
 
-            var employeeIdToDelete = _random.Next(1, 100);
-            tasks.Add(_dbOperations.DeleteEmployeeAsync(employeeIdToDelete));
+            // Удаление случайного сотрудника
+            var employeeToDelete = employees[_random.Next(employees.Count)];
+            tasks.Add(_dbOperations.DeleteEmployeeAsync(employeeToDelete.Id));
 
             return tasks;
         }
 
         private async Task<List<Task>> GenerateOrderTasksAsync(int i)
         {
-            var tasks = new List<Task>();
-            var order = new Order
+            var clients = await _dbOperations.GetClientsAsync();
+            var cars = await _dbOperations.GetCarsAsync();
+            if (!clients.Any() || !cars.Any()) return new List<Task>();
+
+            // Создание нового заказа
+            var newOrder = new Faker<Order>()
+                .RuleFor(o => o.CarId, f => f.PickRandom(cars).Id)
+                .RuleFor(o => o.ClientId, f => f.PickRandom(clients).Id)
+                .RuleFor(o => o.CreatedAt, f => f.Date.Between(DateTime.Now.AddYears(-1), DateTime.Now))
+                .RuleFor(o => o.CompletedAt, (f, o) => f.Date.Between(o.CreatedAt, o.CreatedAt.AddMonths(6)))
+                .Generate();
+
+            var tasks = new List<Task>
             {
-                CarId = _random.Next(1, 100),
-                ClientId = _random.Next(1, 100),
-                CreatedAt = DateTime.Now,
-                CompletedAt = DateTime.Now.AddDays(1)
+                _dbOperations.CreateOrderAsync(newOrder)
             };
-            tasks.Add(_dbOperations.CreateOrderAsync(order));
 
-            var orderIdToUpdate = _random.Next(1, 100);
-            tasks.Add(_dbOperations.UpdateOrderAsync(orderIdToUpdate, DateTime.Now.AddDays(2)));
+            // Обновление случайного заказа
+            var orders = await _dbOperations.GetOrdersAsync();
+            if (orders.Any())
+            {
+                var orderToUpdate = orders[_random.Next(orders.Count)];
+                tasks.Add(_dbOperations.UpdateOrderAsync(
+                    orderToUpdate.Id,
+                    DateTime.Now.AddDays(_random.Next(1, 10))));
+            }
 
-            var orderIdToDelete = _random.Next(1, 100);
-            tasks.Add(_dbOperations.DeleteOrderAsync(orderIdToDelete));
+            // Удаление случайного заказа
+            if (orders.Any())
+            {
+                var orderToDelete = orders[_random.Next(orders.Count)];
+                tasks.Add(_dbOperations.DeleteOrderAsync(orderToDelete.Id));
+            }
 
             return tasks;
         }
 
         private async Task<List<Task>> GeneratePartTasksAsync(int i)
         {
-            var partFaker = new Faker<Part>()
-                .RuleFor(p => p.Name, f => f.PickRandom(DataConstants.PartPrices.Keys.ToArray()))
-                .RuleFor(p => p.Price, (f, part) =>
-                {
-                    if (DataConstants.PartPrices.TryGetValue(part.Name, out var priceRange))
-                    {
-                        return f.Random.Number(priceRange.Min, priceRange.Max);
-                    }
-                    return f.Random.Number(100, 50000);
-                });
+            var parts = await _dbOperations.GetPartsAsync();
+            if (!parts.Any()) return new List<Task>();
 
-            var tasks = new List<Task>();
-            var part = partFaker.Generate();
-            tasks.Add(_dbOperations.CreatePartAsync(part));
+            // Создание новой запчасти
+            var newPart = new Faker<Part>()
+                .RuleFor(p => p.Name, f => f.Commerce.ProductName())
+                .RuleFor(p => p.Price, f => f.Random.Number(100, 50000))
+                .Generate();
 
-            var partIdToUpdate = _random.Next(1, 100);
-            tasks.Add(_dbOperations.UpdatePartAsync(partIdToUpdate, _random.Next(100, 1000)));
+            var tasks = new List<Task>
+            {
+                _dbOperations.CreatePartAsync(newPart)
+            };
 
-            var partIdToDelete = _random.Next(1, 100);
-            tasks.Add(_dbOperations.DeletePartAsync(partIdToDelete));
+            // Обновление случайной запчасти
+            var partToUpdate = parts[_random.Next(parts.Count)];
+            tasks.Add(_dbOperations.UpdatePartAsync(
+                partToUpdate.Id,
+                _random.Next(100, 1000)));
+
+            // Удаление случайной запчасти
+            var partToDelete = parts[_random.Next(parts.Count)];
+            tasks.Add(_dbOperations.DeletePartAsync(partToDelete.Id));
 
             return tasks;
         }
 
         private async Task<List<Task>> GenerateServiceTasksAsync(int i)
         {
-            var serviceFaker = new Faker<Service>()
-                .RuleFor(s => s.Name, f => f.PickRandom(DataConstants.ServiceToParts.Keys.ToArray()))
-                .RuleFor(s => s.Price, f => f.Random.Number(500, 30000));
+            var services = await _dbOperations.GetServicesAsync();
+            if (!services.Any()) return new List<Task>();
 
-            var tasks = new List<Task>();
-            var service = serviceFaker.Generate();
-            tasks.Add(_dbOperations.CreateServiceAsync(service));
+            // Создание новой услуги
+            var newService = new Faker<Service>()
+                .RuleFor(s => s.Name, f => f.Commerce.ProductName())
+                .RuleFor(s => s.Price, f => f.Random.Number(500, 30000))
+                .Generate();
 
-            var serviceIdToUpdate = _random.Next(1, 100);
-            tasks.Add(_dbOperations.UpdateServiceAsync(serviceIdToUpdate, _random.Next(100, 1000)));
+            var tasks = new List<Task>
+            {
+                _dbOperations.CreateServiceAsync(newService)
+            };
 
-            var serviceIdToDelete = _random.Next(1, 100);
-            tasks.Add(_dbOperations.DeleteServiceAsync(serviceIdToDelete));
+            // Обновление случайной услуги
+            var serviceToUpdate = services[_random.Next(services.Count)];
+            tasks.Add(_dbOperations.UpdateServiceAsync(
+                serviceToUpdate.Id,
+                _random.Next(100, 1000)));
+
+            // Удаление случайной услуги
+            var serviceToDelete = services[_random.Next(services.Count)];
+            tasks.Add(_dbOperations.DeleteServiceAsync(serviceToDelete.Id));
 
             return tasks;
         }
     }
-
 }

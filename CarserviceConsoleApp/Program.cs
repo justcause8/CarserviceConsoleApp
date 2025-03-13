@@ -9,6 +9,7 @@ class Program
 {
     static async Task Main()
     {
+        // Настройка сервисов
         var serviceProvider = new ServiceCollection()
             .AddDbContextFactory<CarserviceContext>(options =>
                 options.UseSqlServer("Server=localhost;Database=carservice;Trusted_Connection=True;TrustServerCertificate=true;Connect Timeout=60;"))
@@ -17,6 +18,7 @@ class Program
             .AddSingleton<RequestGenerator>()
             .BuildServiceProvider();
 
+        // Получение сервисов
         var generator = serviceProvider.GetRequiredService<DataGenerator>();
         var requestGenerator = serviceProvider.GetRequiredService<RequestGenerator>();
 
@@ -45,18 +47,29 @@ class Program
                 {
                     case "1":
                         Console.WriteLine("Запуск генерации данных...");
-                        await generator.GenerateDataAsync();
+                        await generator.FillDatabaseAsync(
+                            clientsCount: 1000,
+                            carsCount: 3000,
+                            employeesCount: 300,
+                            ordersCount: 4000,
+                            inventoryCount: 5000,
+                            orderPartsCount: 5000,
+                            orderServicesCount: 5000,
+                            orderAssignmentsCount: 5000
+                        );
                         Console.WriteLine("Генерация данных завершена.");
                         break;
 
                     case "2":
-                        Console.WriteLine("Запуск клиентского приложение...");
+                        Console.WriteLine("Запуск клиентского приложения...");
                         await requestGenerator.GenerateRequestsAsync();
                         Console.WriteLine("Клиентское приложение завершило работу.");
                         break;
 
                     case "3":
+                        Console.WriteLine("Очистка базы данных...");
                         await generator.ClearDatabaseAsync();
+                        Console.WriteLine("База данных очищена.");
                         break;
 
                     case "q":

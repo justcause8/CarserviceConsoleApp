@@ -2,181 +2,53 @@
 using CarserviceConsoleApp;
 using CarserviceConsoleApp.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 public class DataGenerator
 {
     private readonly IDbContextFactory<CarserviceContext> _contextFactory;
+    private static readonly int batchSize = 1000;
 
     public DataGenerator(IDbContextFactory<CarserviceContext> contextFactory)
     {
         _contextFactory = contextFactory;
     }
 
-    public async Task GenerateDataAsync()
+    public async Task<List<Client>> GenerateClients(int count)
     {
-        var tasks = new List<Task>();
-        tasks.Add(GeneratePartsAsync()); // Генерация запчастей
-        tasks.Add(GenerateServicesAsync()); // Генерация услуг
-        tasks.Add(GenerateClientsAsync()); // Генерация клиентов
-        tasks.Add(GenerateEmployeesAsync()); // Генерация сотрудников
-        tasks.Add(GenerateCarsAsync()); // Генерация автомобилей
-        tasks.Add(GenerateInventoryAsync()); // Генерация склада
-        tasks.Add(GenerateOrdersAsync()); // Генерация заказов
-        tasks.Add(GenerateOrderPartsAsync()); // Генерация частей заказов
-        tasks.Add(GenerateOrderServicesAsync()); // Генерация услуг заказов
-        tasks.Add(GenerateOrderAssignmentsAsync()); // Генерация назначений сотрудников
-        await Task.WhenAll(tasks);
-        Console.WriteLine("Данные успешно сгенерированы!");
-    }
-
-
-    private async Task GeneratePartsAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Parts.AnyAsync())
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalClients = 0;
+        var allClients = new List<Client>();
+        for (int i = 0; i < count; i += batchSize)
         {
-            Console.WriteLine("Генерация запчастей...");
-            var partNames = DataConstants.ServiceToParts.Values.SelectMany(parts => parts).Distinct().ToArray();
-            var partsFaker = new Faker<Part>()
-                .RuleFor(i => i.Name, f => f.PickRandom(partNames))
-                .RuleFor(i => i.Price, (f, part) =>
-                {
-                    if (DataConstants.PartPrices.TryGetValue(part.Name, out var priceRange))
-                    {
-                        return f.Random.Number(priceRange.Min, priceRange.Max);
-                    }
-                    return f.Random.Number(100, 50000);
-                });
-
-            var parts = partsFaker.Generate(partNames.Length);
-            await context.Parts.AddRangeAsync(parts);
-            await context.SaveChangesAsync();
-            Console.WriteLine("Запчасти успешно добавлены!");
-        }
-    }
-
-
-    private async Task GenerateServicesAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Services.AnyAsync())
-        {
-            Console.WriteLine("Генерация услуг...");
-
-            var servicesFaker = new Faker<Service>()
-                .RuleFor(s => s.Name, f => f.PickRandom(DataConstants.ServiceToParts.Keys.ToArray()))
-                .RuleFor(s => s.Price, f => f.Random.Number(500, 30000));
-
-            var services = servicesFaker.Generate(DataConstants.ServiceToParts.Count);
-            await context.Services.AddRangeAsync(services);
-            await context.SaveChangesAsync();
-
-            // Повторно загружаем услуги и запчасти после сохранения
-            var savedServices = await context.Services.ToListAsync();
-            var parts = await context.Parts.ToListAsync();
-
-            var serviceParts = new List<ServicePart>();
-
-            foreach (var service in savedServices)
-            {
-                if (DataConstants.ServiceToParts.TryGetValue(service.Name, out var partNames))
-                {
-                    foreach (var partName in partNames)
-                    {
-                        var part = parts.FirstOrDefault(p => p.Name == partName);
-                        if (part != null)
-                        {
-                            serviceParts.Add(new ServicePart
-                            {
-                                ServiceId = service.Id,
-                                PartId = part.Id
-                            });
-                        }
-                    }
-                }
-            }
-
-            if (serviceParts.Count > 0)
-            {
-                await context.ServiceParts.AddRangeAsync(serviceParts);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {serviceParts.Count} связей ServicePart");
-            }
-            else
-            {
-                Console.WriteLine("Не удалось создать связи ServicePart – проверьте генерацию запчастей.");
-            }
-
-            Console.WriteLine("Услуги успешно добавлены!");
-        }
-    }
-
-
-    private async Task GenerateEmployeesAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Employees.AnyAsync())
-        {
-            Console.WriteLine("Генерация сотрудников...");
-            var employeeFaker = new Faker<Employee>()
-                .RuleFor(e => e.Name, f => f.Name.FullName())
-                .RuleFor(e => e.Position, f => f.PickRandom(new[] { "Механик", "Старший механик", "Менеджер", "Руководитель" }))
-                .RuleFor(e => e.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"));
-
-            var employees = employeeFaker.Generate(300);
-            await context.Employees.AddRangeAsync(employees);
-            await context.SaveChangesAsync();
-            
-            Console.WriteLine("Сотрудники успешно добавлены!");
-        }
-        
-    }
-
-    private async Task GenerateClientsAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Clients.AnyAsync())
-        {
-            Console.WriteLine("Генерация клиентов...");
-
-            var batchSize = 1000;
-            //var totalClients = 10000;
-            var totalClients = 1000;
-
-            var clientsFaker = new Faker<Client>()
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var clients = new Faker<Client>()
                 .RuleFor(c => c.Name, f => f.Name.FullName())
-                .RuleFor(c => c.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"));
+                .RuleFor(c => c.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"))
+                .Generate(currentBatchSize);
 
-            for (int i = 0; i < totalClients; i += batchSize)
-            {
-                var clients = clientsFaker.Generate(batchSize);
-                await context.Clients.AddRangeAsync(clients);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} клиентов...");
-            }
+            await context.Clients.AddRangeAsync(clients);
+            await context.SaveChangesAsync();
 
-            Console.WriteLine("Клиенты успешно добавлены!");
+            totalClients += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalClients} клиентов...");
+            allClients.AddRange(clients);
         }
+        return allClients;
     }
 
-    private async Task GenerateCarsAsync()
+    public async Task<List<Car>> GenerateCars(int count, List<int> clientIds)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Cars.AnyAsync())
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalCars = 0;
+        var allCars = new List<Car>();
+        for (int i = 0; i < count; i += batchSize)
         {
-            Console.WriteLine("Генерация автомобилей...");
-
-            var clientIds = await context.Clients.Select(c => c.Id).ToListAsync();
-
-            if (!clientIds.Any()) return;
-
-            var batchSize = 1000;
-            //var totalCars = 30000;
-            var totalCars = 3000;
-
-            var carFaker = new Faker<Car>()
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var cars = new Faker<Car>()
                 .RuleFor(c => c.Brand, f => f.PickRandom(DataConstants.carData.Keys.ToArray()))
                 .RuleFor(c => c.Model, (f, car) =>
                 {
@@ -185,211 +57,303 @@ public class DataGenerator
                 })
                 .RuleFor(c => c.Vin, f => f.Vehicle.Vin())
                 .RuleFor(c => c.Year, f => DateOnly.FromDateTime(f.Date.Between(DateTime.Now.AddYears(-20), DateTime.Now)))
-                .RuleFor(c => c.ClientId, f => f.PickRandom(clientIds));
+                .RuleFor(c => c.ClientId, f => f.PickRandom(clientIds))
+                .Generate(currentBatchSize);
 
-            //var cars = carFaker.Generate(30000);
-            //await context.Cars.AddRangeAsync(cars);
-            //await context.SaveChangesAsync();
+            await context.Cars.AddRangeAsync(cars);
+            await context.SaveChangesAsync();
 
-            for (int i = 0; i < totalCars; i += batchSize)
-            {
-                var cars = carFaker.Generate(batchSize);
-                await context.Cars.AddRangeAsync(cars);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} автомобилей...");
-            }
-
-            Console.WriteLine("Автомобили успешно добавлены!");
+            totalCars += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalCars} автомобилей...");
+            allCars.AddRange(cars);
         }
+        return allCars;
     }
 
-    private async Task GenerateInventoryAsync()
+    public async Task<List<Employee>> GenerateEmployees(int count)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Inventories.AnyAsync())
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalEmployees = 0;
+        var allEmployees = new List<Employee>();
+        for (int i = 0; i < count; i += batchSize)
         {
-            Console.WriteLine("Генерация склада...");
-            var partIds = await context.Parts.Select(p => p.Id).ToListAsync();
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var employees = new Faker<Employee>()
+                .RuleFor(e => e.Name, f => f.Name.FullName())
+                .RuleFor(e => e.Position, f => f.PickRandom(new[] { "Механик", "Старший механик", "Менеджер", "Руководитель" }))
+                .RuleFor(e => e.Phone, f => f.Phone.PhoneNumber("+7 (###) ### ## ##"))
+                .Generate(currentBatchSize);
 
-            if (!partIds.Any()) return;
+            await context.Employees.AddRangeAsync(employees);
+            await context.SaveChangesAsync();
 
-            var batchSize = 1000;
-            var totalInventories = 5000;
+            totalEmployees += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalEmployees} сотрудников...");
+            allEmployees.AddRange(employees);
+        }
+        return allEmployees;
+    }
 
-            var inventoryFaker = new Faker<Inventory>()
+    public async Task<List<Part>> GenerateParts()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        if (await context.Parts.AnyAsync())
+        {
+            Console.WriteLine("Запчасти уже существуют в базе данных. Генерация пропущена.");
+            return new List<Part>();
+        }
+        Console.WriteLine("Генерация запчастей...");
+        var partNames = DataConstants.ServiceToParts.Values
+            .SelectMany(parts => parts)
+            .Distinct()
+            .ToArray();
+        var partsFaker = new Faker<Part>()
+            .RuleFor(p => p.Name, f => f.PickRandom(partNames))
+            .RuleFor(p => p.Price, (f, part) =>
+            {
+                if (DataConstants.PartPrices.TryGetValue(part.Name, out var priceRange))
+                {
+                    return f.Random.Number(priceRange.Min, priceRange.Max);
+                }
+                return f.Random.Number(100, 50000);
+            });
+
+        var parts = partsFaker.Generate(partNames.Length);
+
+        await context.Parts.AddRangeAsync(parts);
+        await context.SaveChangesAsync();
+
+        Console.WriteLine($"Добавлено {parts.Count} запчастей...");
+        return parts;
+    }
+
+    public async Task<List<Service>> GenerateServices(int count)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalServices = 0;
+        var allServices = new List<Service>();
+
+        for (int i = 0; i < count; i += batchSize)
+        {
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var services = new Faker<Service>()
+                .RuleFor(s => s.Name, f => f.PickRandom(DataConstants.ServiceToParts.Keys.ToArray()))
+                .RuleFor(s => s.Price, f => f.Random.Number(500, 30000))
+                .Generate(currentBatchSize);
+
+            await context.Services.AddRangeAsync(services);
+            await context.SaveChangesAsync();
+            totalServices += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalServices} услуг...");
+
+            allServices.AddRange(services);
+        }
+
+        return allServices;
+    }
+
+    public async Task<List<Order>> GenerateOrders(int count, List<int> carIds, List<int> clientIds)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalOrders = 0;
+        var allOrders = new List<Order>();
+
+        for (int i = 0; i < count; i += batchSize)
+        {
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var orders = new Faker<Order>()
+                .RuleFor(o => o.CarId, f => f.PickRandom(carIds))
+                .RuleFor(o => o.ClientId, f => f.PickRandom(clientIds))
+                .RuleFor(o => o.CreatedAt, f =>
+                {
+                    var startDate = DateTime.Now.AddYears(-20);
+                    return f.Date.Between(startDate, DateTime.Now);
+                })
+                .RuleFor(o => o.CompletedAt, (f, order) =>
+                {
+                    var endDate = order.CreatedAt.AddMonths(6);
+                    return f.Date.Between(order.CreatedAt, endDate);
+                })
+                .Generate(currentBatchSize);
+
+            await context.Orders.AddRangeAsync(orders);
+            await context.SaveChangesAsync();
+            totalOrders += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalOrders} заказов...");
+
+            allOrders.AddRange(orders);
+        }
+
+        return allOrders;
+    }
+
+    public async Task<List<Inventory>> GenerateInventory(int count, List<int> partIds)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalInventory = 0;
+        var allInventories = new List<Inventory>();
+
+        for (int i = 0; i < count; i += batchSize)
+        {
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var inventory = new Faker<Inventory>()
                 .RuleFor(i => i.PartId, f => f.PickRandom(partIds))
-                .RuleFor(i => i.Stock, f => f.Random.Number(1, 100));
+                .RuleFor(i => i.Stock, f => f.Random.Number(1, 100))
+                .Generate(currentBatchSize);
 
-            //var inventories = inventoryFaker.Generate(5000);
-            //await context.Inventories.AddRangeAsync(inventories);
-            //await context.SaveChangesAsync();
+            await context.Inventories.AddRangeAsync(inventory);
+            await context.SaveChangesAsync();
+            totalInventory += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalInventory} записей на складе...");
 
-            for (int i = 0; i < totalInventories; i += batchSize)
-            {
-                var inventories = inventoryFaker.Generate(batchSize);
-                await context.Inventories.AddRangeAsync(inventories);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} запчастей в складе...");
-            }
-
-            Console.WriteLine("Склад успешно добавлен!");
+            allInventories.AddRange(inventory);
         }
+
+        return allInventories;
     }
 
-    private async Task GenerateOrdersAsync()
+    public async Task<List<OrderPart>> GenerateOrderParts(int count, List<int> orderIds, List<int> partIds)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.Orders.AnyAsync())
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalOrderParts = 0;
+        var allOrderParts = new List<OrderPart>();
+
+        for (int i = 0; i < count; i += batchSize)
         {
-            Console.WriteLine("Генерация заказов...");
-            var carIds = await context.Cars.Select(c => c.Id).ToListAsync();
-            var clientIds = await context.Clients.Select(c => c.Id).ToListAsync();
-
-            var batchSize = 1000;
-            //var totalOrders = 40000;
-            var totalOrders = 4000;
-
-            var orderFaker = new Faker<Order>()
-               .RuleFor(o => o.CarId, f => f.PickRandom(carIds))
-               .RuleFor(o => o.ClientId, f => f.PickRandom(clientIds))
-               .RuleFor(o => o.CreatedAt, f =>
-               {
-                   // Генерируем случайную дату в диапазоне от "сегодня минус 20 лет" до "сегодня"
-                   var startDate = DateTime.Now.AddYears(-20);
-                   return f.Date.Between(startDate, DateTime.Now);
-               })
-               .RuleFor(o => o.CompletedAt, (f, order) =>
-               {
-                   // Генерируем случайную дату в диапазоне от CreatedAt до CreatedAt + 6 месяцев
-                   var endDate = order.CreatedAt.AddMonths(6);
-                   return f.Date.Between(order.CreatedAt, endDate);
-               });
-
-            //var orders = orderFaker.Generate(40000);
-            //await context.Orders.AddRangeAsync(orders);
-            //await context.SaveChangesAsync();
-
-            for (int i = 0; i < totalOrders; i += batchSize)
-            {
-                var orders = orderFaker.Generate(batchSize);
-                await context.Orders.AddRangeAsync(orders);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} заказов...");
-            }
-
-            Console.WriteLine("Заказы успешно добавлены!");
-        }
-    }
-
-    private async Task GenerateOrderPartsAsync()
-    {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.OrderParts.AnyAsync())
-        {
-            Console.WriteLine("Генерация запчастей в заказах...");
-            var orderIds = await context.Orders.Select(o => o.Id).ToListAsync();
-            var partIds = await context.Parts.Select(p => p.Id).ToListAsync();
-
-            var batchSize = 1000;
-            //var totalOrderParts = 50000;
-            var totalOrderParts = 5000;
-
-            var orderPartsFaker = new Faker<OrderPart>()
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var orderParts = new Faker<OrderPart>()
                 .RuleFor(op => op.OrderId, f => f.PickRandom(orderIds))
                 .RuleFor(op => op.PartId, f => f.PickRandom(partIds))
-                .RuleFor(op => op.Quantity, f => f.Random.Number(1, 10));
+                .RuleFor(op => op.Quantity, f => f.Random.Number(1, 10))
+                .Generate(currentBatchSize);
 
-            //var orderParts = orderPartsFaker.Generate(50000);
-            //await context.OrderParts.AddRangeAsync(orderParts);
-            //await context.SaveChangesAsync();
+            await context.OrderParts.AddRangeAsync(orderParts);
+            await context.SaveChangesAsync();
+            totalOrderParts += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalOrderParts} частей заказов...");
 
-            for (int i = 0; i < totalOrderParts; i += batchSize)
-            {
-                var orderParts = orderPartsFaker.Generate(batchSize);
-                await context.OrderParts.AddRangeAsync(orderParts);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} запчастей в заказах...");
-            }
-
-            Console.WriteLine("Запчасти в заказах успешно добавлены!");
+            allOrderParts.AddRange(orderParts);
         }
+
+        return allOrderParts;
     }
 
-    private async Task GenerateOrderServicesAsync()
+    public async Task<List<OrderService>> GenerateOrderServices(int count, List<int> orderIds, List<int> serviceIds)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.OrderServices.AnyAsync())
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalOrderServices = 0;
+        var allOrderServices = new List<OrderService>();
+
+        for (int i = 0; i < count; i += batchSize)
         {
-            Console.WriteLine("Генерация услуг в заказах...");
-            var orderIds = await context.Orders.Select(o => o.Id).ToListAsync();
-            var serviceIds = await context.Services.Select(s => s.Id).ToListAsync();
-
-            //if (!orderIds.Any() || !serviceIds.Any())
-            //{
-            //    Console.WriteLine("Не найдено заказов или услуг. Пропуск генерации OrderServices.");
-            //    return;
-            //}
-
-            var batchSize = 1000;
-            //var totalOrderServices = 50000;
-            var totalOrderServices = 5000;
-
-            var orderServicesFaker = new Faker<OrderService>()
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var orderServices = new Faker<OrderService>()
                 .RuleFor(os => os.OrderId, f => f.PickRandom(orderIds))
-                .RuleFor(os => os.ServiceId, f => f.PickRandom(serviceIds));
+                .RuleFor(os => os.ServiceId, f => f.PickRandom(serviceIds))
+                .Generate(currentBatchSize);
 
-            //var orderServices = orderServicesFaker.Generate(50000);
-            //await context.OrderServices.AddRangeAsync(orderServices);
-            //await context.SaveChangesAsync();
+            await context.OrderServices.AddRangeAsync(orderServices);
+            await context.SaveChangesAsync();
+            totalOrderServices += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalOrderServices} услуг заказов...");
 
-            for (int i = 0; i < totalOrderServices; i += batchSize)
-            {
-                var orderServices = orderServicesFaker.Generate(batchSize);
-                await context.OrderServices.AddRangeAsync(orderServices);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} услуг в заказах...");
-            }
-
-            Console.WriteLine("Услуги в заказах успешно добавлены!");
+            allOrderServices.AddRange(orderServices);
         }
+
+        return allOrderServices;
     }
 
-    private async Task GenerateOrderAssignmentsAsync()
+    public async Task<List<OrderAssignment>> GenerateOrderAssignments(int count, List<int> orderIds, List<int> employeeIds)
     {
-        using var context = await _contextFactory.CreateDbContextAsync();
-        if (!await context.OrderAssignments.AnyAsync())
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var totalOrderAssignments = 0;
+        var allOrderAssignments = new List<OrderAssignment>();
+
+        for (int i = 0; i < count; i += batchSize)
         {
-            Console.WriteLine("Генерация назначений сотрудников на заказы...");
-            var orderIds = await context.Orders.Select(o => o.Id).ToListAsync();
-            var employeeIds = await context.Employees.Select(e => e.Id).ToListAsync();
-
-            //if (!orderIds.Any() || !employeeIds.Any())
-            //{
-            //    Console.WriteLine("Не найдено заказов или сотрудников. Пропуск генерации OrderAssignments.");
-            //    return;
-            //}
-
-            var batchSize = 1000;
-            //var totalOrderAssignments = 50000;
-            var totalOrderAssignments = 5000;
-
-            var orderAssignmentsFaker = new Faker<OrderAssignment>()
+            int currentBatchSize = Math.Min(batchSize, count - i);
+            var orderAssignments = new Faker<OrderAssignment>()
                 .RuleFor(oa => oa.OrderId, f => f.PickRandom(orderIds))
-                .RuleFor(oa => oa.EmployeeId, f => f.PickRandom(employeeIds));
+                .RuleFor(oa => oa.EmployeeId, f => f.PickRandom(employeeIds))
+                .Generate(currentBatchSize);
 
-            //var orderAssignments = orderAssignmentsFaker.Generate(50000);
-            //await context.OrderAssignments.AddRangeAsync(orderAssignments);
-            //await context.SaveChangesAsync();
+            await context.OrderAssignments.AddRangeAsync(orderAssignments);
+            await context.SaveChangesAsync();
+            totalOrderAssignments += currentBatchSize;
+            Console.WriteLine($"Добавлено {totalOrderAssignments} назначений сотрудников...");
 
-            for (int i = 0; i < totalOrderAssignments; i += batchSize)
+            allOrderAssignments.AddRange(orderAssignments);
+        }
+
+        return allOrderAssignments;
+    }
+
+    public List<ServicePart> GenerateServiceParts(List<Service> services, List<Part> parts)
+    {
+        var serviceParts = new List<ServicePart>();
+        foreach (var service in services)
+        {
+            if (DataConstants.ServiceToParts.TryGetValue(service.Name, out var partNames))
             {
-                var orderAssignments = orderAssignmentsFaker.Generate(batchSize);
-                await context.OrderAssignments.AddRangeAsync(orderAssignments);
-                await context.SaveChangesAsync();
-                Console.WriteLine($"Добавлено {i + batchSize} сотрудников в заказах...");
+                foreach (var partName in partNames)
+                {
+                    var part = parts.FirstOrDefault(p => p.Name == partName);
+                    if (part != null)
+                    {
+                        serviceParts.Add(new ServicePart
+                        {
+                            ServiceId = service.Id,
+                            PartId = part.Id
+                        });
+                    }
+                }
             }
+        }
+        return serviceParts;
+    }
 
-            Console.WriteLine("Сотрудники в заказах успешно добавлены!");
+    public async Task FillDatabaseAsync(
+        int clientsCount,
+        int carsCount,
+        int employeesCount,
+        int ordersCount,
+        int inventoryCount,
+        int orderPartsCount,
+        int orderServicesCount,
+        int orderAssignmentsCount)
+    {
+        int servicesCount = DataConstants.ServiceToParts.Keys.Count;
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        await context.Database.BeginTransactionAsync();
+        try
+        {
+            var parts = await GenerateParts();
+            var services = await GenerateServices(servicesCount);
+            var clients = await GenerateClients(clientsCount);
+            var employees = await GenerateEmployees(employeesCount);
+            var clientIds = clients.Select(c => c.Id).ToList();
+            var cars = await GenerateCars(carsCount, clientIds);
+            var partIds = parts.Select(p => p.Id).ToList();
+            var inventories = await GenerateInventory(inventoryCount, partIds);
+            var carIds = cars.Select(c => c.Id).ToList();
+            var orders = await GenerateOrders(ordersCount, carIds, clientIds);
+            var serviceParts = GenerateServiceParts(services, parts);
+            await context.ServiceParts.AddRangeAsync(serviceParts);
+            await context.SaveChangesAsync();
+            var orderIds = orders.Select(o => o.Id).ToList();
+            var serviceIds = services.Select(s => s.Id).ToList();
+            var employeeIds = employees.Select(e => e.Id).ToList();
+            var orderParts = await GenerateOrderParts(orderPartsCount, orderIds, partIds);
+            var orderServices = await GenerateOrderServices(orderServicesCount, orderIds, serviceIds);
+            var orderAssignments = await GenerateOrderAssignments(orderAssignmentsCount, orderIds, employeeIds);
+            await context.Database.CommitTransactionAsync();
+        }
+        catch (Exception ex)
+        {
+            await context.Database.RollbackTransactionAsync();
+            Console.WriteLine($"Ошибка: {ex.Message}");
+            Console.WriteLine($"Детали: {ex.InnerException?.Message}");
+            throw;
         }
     }
 
@@ -397,10 +361,7 @@ public class DataGenerator
     {
         try
         {
-            Console.WriteLine("Очистка базы данных...");
-
             using var context = await _contextFactory.CreateDbContextAsync();
-
             await context.OrderParts.ExecuteDeleteAsync();
             await context.OrderServices.ExecuteDeleteAsync();
             await context.OrderAssignments.ExecuteDeleteAsync();
@@ -412,21 +373,17 @@ public class DataGenerator
             await context.Inventories.ExecuteDeleteAsync();
             await context.Parts.ExecuteDeleteAsync();
             await context.Services.ExecuteDeleteAsync();
-
             var entityTypes = context.Model.GetEntityTypes();
             foreach (var entityType in entityTypes)
             {
                 var tableName = entityType.GetTableName();
                 var identityColumn = entityType.GetProperties()
                     .FirstOrDefault(p => p.ValueGenerated == ValueGenerated.OnAdd);
-
                 if (identityColumn != null && !string.IsNullOrEmpty(tableName))
                 {
                     await context.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT ('{tableName}', RESEED, 0)");
                 }
             }
-
-            Console.WriteLine("База данных успешно очищена.");
         }
         catch (Exception ex)
         {
