@@ -9,9 +9,10 @@ using System.Threading.Tasks;
 
 public class DataGenerator
 {
-    private readonly IDbContextFactory<CarserviceContext> _contextFactory;
+    private readonly IDbContextFactory<CarserviceContext> _contextFactory; // Поле для хранения фабрики контекста базы данных, которая используется для создания экземпляров CarserviceContext
     private static readonly int batchSize = 1000;
 
+    // Конструктор класса, который принимает фабрику контекста через Dependency Injection и сохраняет её в поле _contextFactory
     public DataGenerator(IDbContextFactory<CarserviceContext> contextFactory)
     {
         _contextFactory = contextFactory;
@@ -19,7 +20,8 @@ public class DataGenerator
 
     public async Task<List<Client>> GenerateClients(int count)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync();
+        // Создаем временный контекст 
+        await using var context = await _contextFactory.CreateDbContextAsync(); 
         var totalClients = 0;
         var allClients = new List<Client>();
         for (int i = 0; i < count; i += batchSize)
@@ -47,7 +49,7 @@ public class DataGenerator
         var allCars = new List<Car>();
         for (int i = 0; i < count; i += batchSize)
         {
-            int currentBatchSize = Math.Min(batchSize, count - i);
+            int currentBatchSize = Math.Min(batchSize, count - i); // Если осталось меньше записей, чем размер пачки, берется остаток
             var cars = new Faker<Car>()
                 .RuleFor(c => c.Brand, f => f.PickRandom(DataConstants.carData.Keys.ToArray()))
                 .RuleFor(c => c.Model, (f, car) =>
@@ -60,10 +62,10 @@ public class DataGenerator
                 .RuleFor(c => c.ClientId, f => f.PickRandom(clientIds))
                 .Generate(currentBatchSize);
 
-            await context.Cars.AddRangeAsync(cars);
+            await context.Cars.AddRangeAsync(cars); // Добавляем все сгенерированные автомобили в контекст базы данных
             await context.SaveChangesAsync();
 
-            totalCars += currentBatchSize;
+            totalCars += currentBatchSize; // Увеличиваем на количество добавленных автомобилей в текущей пачке
             Console.WriteLine($"Добавлено {totalCars} автомобилей...");
             allCars.AddRange(cars);
         }
@@ -322,9 +324,11 @@ public class DataGenerator
         int orderServicesCount,
         int orderAssignmentsCount)
     {
-        int servicesCount = DataConstants.ServiceToParts.Keys.Count;
+        int servicesCount = DataConstants.ServiceToParts.Keys.Count; // Определяем количество услуг из словаря по их количеству ключей
+        
         await using var context = await _contextFactory.CreateDbContextAsync();
         await context.Database.BeginTransactionAsync();
+        
         try
         {
             var parts = await GenerateParts();
@@ -338,7 +342,7 @@ public class DataGenerator
             var carIds = cars.Select(c => c.Id).ToList();
             var orders = await GenerateOrders(ordersCount, carIds, clientIds);
             var serviceParts = GenerateServiceParts(services, parts);
-            await context.ServiceParts.AddRangeAsync(serviceParts);
+            await context.ServiceParts.AddRangeAsync(serviceParts); // AddRangeAsync добавляет сразу все записи из списка serviceParts в контекст (это быстрее чем добавлять по одному)
             await context.SaveChangesAsync();
             var orderIds = orders.Select(o => o.Id).ToList();
             var serviceIds = services.Select(s => s.Id).ToList();
@@ -346,7 +350,8 @@ public class DataGenerator
             var orderParts = await GenerateOrderParts(orderPartsCount, orderIds, partIds);
             var orderServices = await GenerateOrderServices(orderServicesCount, orderIds, serviceIds);
             var orderAssignments = await GenerateOrderAssignments(orderAssignmentsCount, orderIds, employeeIds);
-            await context.Database.CommitTransactionAsync();
+            
+            await context.Database.CommitTransactionAsync(); //Завершаем изменения объектов
         }
         catch (Exception ex)
         {
@@ -373,15 +378,15 @@ public class DataGenerator
             await context.Inventories.ExecuteDeleteAsync();
             await context.Parts.ExecuteDeleteAsync();
             await context.Services.ExecuteDeleteAsync();
-            var entityTypes = context.Model.GetEntityTypes();
+            
+            var entityTypes = context.Model.GetEntityTypes(); // Возвращаем список всех типов сущностей, определенных в контексте базы данных.
             foreach (var entityType in entityTypes)
             {
-                var tableName = entityType.GetTableName();
-                var identityColumn = entityType.GetProperties()
-                    .FirstOrDefault(p => p.ValueGenerated == ValueGenerated.OnAdd);
+                var tableName = entityType.GetTableName(); // Для каждой сущности получаем имя соответствующей таблице в БД
+                var identityColumn = entityType.GetProperties().FirstOrDefault(p => p.ValueGenerated == ValueGenerated.OnAdd); // Перебираем у каждой сущности столбцы и ищем в них столбец (обячно первый) с автоинкрементом
                 if (identityColumn != null && !string.IsNullOrEmpty(tableName))
                 {
-                    await context.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT ('{tableName}', RESEED, 0)");
+                    await context.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT ('{tableName}', RESEED, 0)"); // Сбрасываем счетчик автоинкремента для таблицы
                 }
             }
         }

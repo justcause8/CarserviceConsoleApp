@@ -13,10 +13,10 @@ class Program
         var serviceProvider = new ServiceCollection()
             .AddDbContextFactory<CarserviceContext>(options =>
                 options.UseSqlServer("Server=localhost;Database=carservice;Trusted_Connection=True;TrustServerCertificate=true;Connect Timeout=60;"))
-            .AddScoped<DatabaseOperations>()
-            .AddSingleton<DataGenerator>()
+            .AddScoped<DatabaseOperations>() // Создается для каждого запроса
+            .AddSingleton<DataGenerator>() // Создается один раз
             .AddSingleton<RequestGenerator>()
-            .BuildServiceProvider();
+            .BuildServiceProvider(); // Нужен для создания serviceProvider
 
         // Получение сервисов
         var generator = serviceProvider.GetRequiredService<DataGenerator>();
@@ -61,7 +61,7 @@ class Program
                         break;
 
                     case "2":
-                        Console.WriteLine("Запуск клиентского приложения...");
+                        Console.WriteLine("Запуск клиентского приложения...\n");
                         await requestGenerator.GenerateRequestsAsync();
                         Console.WriteLine("Клиентское приложение завершило работу.");
                         break;

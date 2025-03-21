@@ -30,7 +30,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Clients.Add(client);
             await context.SaveChangesAsync();
-            Log($"Создан клиент: \"{client.Name}\", ID: {client.Id}.");
+            Log($"[CREATE]Создан клиент: \"{client.Name}\", ID: {client.Id}.");
         }
 
         public async Task<List<Client>> GetClientsAsync()
@@ -48,7 +48,7 @@ namespace CarserviceConsoleApp
                 string oldName = client.Name;
                 client.Name = newName;
                 await context.SaveChangesAsync();
-                Log($"Обновлен клиент с ID {clientId}. Старое имя: \"{oldName}\", новое имя: \"{newName}\".");
+                Log($"[UPDATE]Обновлен клиент с ID {clientId}. Старое имя: \"{oldName}\", новое имя: \"{newName}\".");
             }
         }
 
@@ -90,7 +90,7 @@ namespace CarserviceConsoleApp
                 context.Clients.Remove(client);
 
                 await context.SaveChangesAsync();
-                Log($"Удален клиент с ID {clientId}. Имя: \"{clientName}\".");
+                Log($"[DELETE]Удален клиент с ID {clientId}. Имя: \"{clientName}\".");
             }
         }
 
@@ -100,7 +100,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Cars.Add(car);
             await context.SaveChangesAsync();
-            Log($"Создан автомобиль: {car.Brand} {car.Model}, ID: {car.Id}.");
+            Log($"[CREATE]Создан автомобиль: {car.Brand} {car.Model}, ID: {car.Id}.");
         }
 
         public async Task<List<Car>> GetCarsByClientIdAsync(int clientId)
@@ -125,7 +125,7 @@ namespace CarserviceConsoleApp
                 car.Brand = newBrand;
                 car.Model = newModel;
                 await context.SaveChangesAsync();
-                Log($"Обновлен автомобиль с ID {carId}. Было: {oldBrand} {oldModel}, стало: {newBrand} {newModel}.");
+                Log($"[UPDATE]Обновлен автомобиль с ID {carId}. Было: {oldBrand} {oldModel}, стало: {newBrand} {newModel}.");
             }
         }
 
@@ -151,7 +151,7 @@ namespace CarserviceConsoleApp
                 // Удаляем автомобиль
                 context.Cars.Remove(car);
                 await context.SaveChangesAsync();
-                Log($"Удален автомобиль с ID {carId}. Был: {car.Brand} {car.Model}.");
+                Log($"[DELETE]Удален автомобиль с ID {carId}. Был: {car.Brand} {car.Model}.");
             }
         }
 
@@ -162,7 +162,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Employees.Add(employee);
             await context.SaveChangesAsync();
-            Log($"Создан сотрудник: \"{employee.Name}\", Телефон: {employee.Phone}, ID: {employee.Id}.");
+            Log($"[CREATE]Создан сотрудник: \"{employee.Name}\", Телефон: {employee.Phone}, ID: {employee.Id}.");
         }
 
         public async Task<List<Employee>> GetEmployeesAsync()
@@ -180,7 +180,7 @@ namespace CarserviceConsoleApp
                 string oldName = employee.Name;
                 employee.Name = newName;
                 await context.SaveChangesAsync();
-                Log($"Обновлен сотрудник с ID {employeeId}. Старое имя: \"{oldName}\", новое имя: \"{newName}\".");
+                Log($"[UPDATE]Обновлен сотрудник с ID {employeeId}. Старое имя: \"{oldName}\", новое имя: \"{newName}\".");
             }
         }
 
@@ -193,7 +193,7 @@ namespace CarserviceConsoleApp
                 string employeeName = employee.Name;
                 context.Employees.Remove(employee);
                 await context.SaveChangesAsync();
-                Log($"Удален сотрудник с ID {employeeId}. Имя: \"{employeeName}\".");
+                Log($"[DELETE]Удален сотрудник с ID {employeeId}. Имя: \"{employeeName}\".");
             }
         }
 
@@ -203,7 +203,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Orders.Add(order);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Создан Заказ ID: {order.Id}, Клиент ID: {order.ClientId}.");
+            Console.WriteLine($"[CREATE]Создан Заказ ID: {order.Id}, Клиент ID: {order.ClientId}.");
         }
 
 
@@ -222,7 +222,7 @@ namespace CarserviceConsoleApp
                 var oldDate = order.CompletedAt;
                 order.CompletedAt = newCompletedAt;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлён Заказ ID: {orderId}, Старая дата завершения: {oldDate}, Новая дата: {newCompletedAt}.");
+                Console.WriteLine($"[UPDATE]Обновлён Заказ ID: {orderId}, Старая дата завершения: {oldDate}, Новая дата: {newCompletedAt}.");
             }
         }
 
@@ -239,7 +239,7 @@ namespace CarserviceConsoleApp
                 // Удаляем заказ
                 context.Orders.Remove(order);
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалён Заказ ID: {orderId}.");
+                Console.WriteLine($"[DELETE]Удалён Заказ ID: {orderId}.");
             }
         }
 
@@ -249,7 +249,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Parts.Add(part);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Создана Запчасть ID: {part.Id}, Название: \"{part.Name}\".");
+            Console.WriteLine($"[CREATE]Создана Запчасть ID: {part.Id}, Название: \"{part.Name}\".");
         }
 
         public async Task<List<Part>> GetPartsAsync()
@@ -267,7 +267,7 @@ namespace CarserviceConsoleApp
                 decimal oldPrice = part.Price;
                 part.Price = newPrice;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлена Запчасть ID: {partId}, Старая цена: {oldPrice}, Новая цена: {newPrice}.");
+                Console.WriteLine($"[UPDATE]Обновлена Запчасть ID: {partId}, Старая цена: {oldPrice}, Новая цена: {newPrice}.");
             }
         }
 
@@ -288,7 +288,7 @@ namespace CarserviceConsoleApp
                 context.Parts.Remove(part);
 
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалена запчасть с ID {partId}, Название: \"{part.Name}\".");
+                Console.WriteLine($"[DELETE]Удалена запчасть с ID {partId}, Название: \"{part.Name}\".");
             }
         }
 
@@ -298,7 +298,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Services.Add(service);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Создана услуга: \"{service.Name}\", цена: {service.Price}, ID: {service.Id}.");
+            Console.WriteLine($"[CREATE]Создана услуга: \"{service.Name}\", цена: {service.Price}, ID: {service.Id}.");
         }
 
         public async Task<List<Service>> GetServicesAsync()
@@ -316,7 +316,7 @@ namespace CarserviceConsoleApp
                 decimal oldPrice = service.Price;
                 service.Price = newPrice;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлена услуга с ID {serviceId}. Старая цена: {oldPrice}, новая цена: {newPrice}.");
+                Console.WriteLine($"[UPDATE]Обновлена услуга с ID {serviceId}. Старая цена: {oldPrice}, новая цена: {newPrice}.");
             }
         }
 
@@ -329,7 +329,7 @@ namespace CarserviceConsoleApp
                 string serviceName = service.Name;
                 context.Services.Remove(service);
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалена услуга с ID {serviceId}. Название: \"{serviceName}\".");
+                Console.WriteLine($"[DELETE]Удалена услуга с ID {serviceId}. Название: \"{serviceName}\".");
             }
         }
 
@@ -339,7 +339,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.Inventories.Add(inventory);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Добавлена деталь в склад: \"{inventory.PartId}\", количество: {inventory.Stock}, ID: {inventory.Id}.");
+            Console.WriteLine($"[CREATE]Добавлена деталь в склад: \"{inventory.PartId}\", количество: {inventory.Stock}, ID: {inventory.Id}.");
         }
 
         public async Task<List<Inventory>> GetInventoriesAsync()
@@ -357,7 +357,7 @@ namespace CarserviceConsoleApp
                 int oldStock = inventory.Stock;
                 inventory.Stock = newStock;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлёна деталь в складе с ID {inventoryId}. Старое количество: {oldStock}, новое количество: {newStock}.");
+                Console.WriteLine($"[UPDATE]Обновлёна деталь в складе с ID {inventoryId}. Старое количество: {oldStock}, новое количество: {newStock}.");
             }
         }
 
@@ -370,7 +370,7 @@ namespace CarserviceConsoleApp
                 int partId = inventory.PartId;
                 context.Inventories.Remove(inventory);
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалёна деталь из склада с ID {inventoryId} для детали с ID {partId}.");
+                Console.WriteLine($"[DELETE]Удалёна деталь из склада с ID {inventoryId} для детали с ID {partId}.");
             }
         }
 
@@ -380,7 +380,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.OrderParts.Add(orderPart);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Добавлена деталь к заказу. OrderID: {orderPart.OrderId}, PartID: {orderPart.PartId}, Количество: {orderPart.Quantity}.");
+            Console.WriteLine($"[CREATE]Добавлена деталь к заказу. OrderID: {orderPart.OrderId}, PartID: {orderPart.PartId}, Количество: {orderPart.Quantity}.");
         }
 
         public async Task<List<OrderPart>> GetOrderPartsByOrderIdAsync(int orderId)
@@ -398,7 +398,7 @@ namespace CarserviceConsoleApp
                 int oldQuantity = orderPart.Quantity;
                 orderPart.Quantity = newQuantity;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлена деталь в заказе с ID {orderPartId}. Старое количество: {oldQuantity}, новое количество: {newQuantity}.");
+                Console.WriteLine($"[UPDATE]Обновлена деталь в заказе с ID {orderPartId}. Старое количество: {oldQuantity}, новое количество: {newQuantity}.");
             }
         }
 
@@ -411,7 +411,7 @@ namespace CarserviceConsoleApp
                 int partId = orderPart.PartId;
                 context.OrderParts.Remove(orderPart);
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалена деталь с ID {partId} из заказа с ID {orderPart.OrderId}.");
+                Console.WriteLine($"[DELETE]Удалена деталь с ID {partId} из заказа с ID {orderPart.OrderId}.");
             }
         }
 
@@ -421,7 +421,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.OrderServices.Add(orderService);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Добавлена услуга к заказу. OrderID: {orderService.OrderId}, ServiceID: {orderService.ServiceId}.");
+            Console.WriteLine($"[CREATE]Добавлена услуга к заказу. OrderID: {orderService.OrderId}, ServiceID: {orderService.ServiceId}.");
         }
 
         public async Task<List<OrderService>> GetOrderServicesByOrderIdAsync(int orderId)
@@ -439,7 +439,7 @@ namespace CarserviceConsoleApp
                 int oldServiceId = orderService.ServiceId;
                 orderService.ServiceId = newServiceId;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлена услуга в заказе с ID {orderServiceId}. Старый ServiceID: {oldServiceId}, новый ServiceID: {newServiceId}.");
+                Console.WriteLine($"[UPDATE]Обновлена услуга в заказе с ID {orderServiceId}. Старый ServiceID: {oldServiceId}, новый ServiceID: {newServiceId}.");
             }
         }
 
@@ -452,7 +452,7 @@ namespace CarserviceConsoleApp
                 int serviceId = orderService.ServiceId;
                 context.OrderServices.Remove(orderService);
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалена услуга с ID {serviceId} из заказа с ID {orderService.OrderId}.");
+                Console.WriteLine($"[DELETE]Удалена услуга с ID {serviceId} из заказа с ID {orderService.OrderId}.");
             }
         }
 
@@ -462,7 +462,7 @@ namespace CarserviceConsoleApp
             using var context = await _contextFactory.CreateDbContextAsync();
             context.OrderAssignments.Add(orderAssignment);
             await context.SaveChangesAsync();
-            Console.WriteLine($"Назначен сотрудник с ID {orderAssignment.EmployeeId} на заказ с ID {orderAssignment.OrderId}.");
+            Console.WriteLine($"[CREATE]Назначен сотрудник с ID {orderAssignment.EmployeeId} на заказ с ID {orderAssignment.OrderId}.");
         }
 
         public async Task<List<OrderAssignment>> GetOrderAssignmentsByOrderIdAsync(int orderId)
@@ -480,7 +480,7 @@ namespace CarserviceConsoleApp
                 int oldEmployeeId = orderAssignment.EmployeeId;
                 orderAssignment.EmployeeId = newEmployeeId;
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Обновлено назначение в заказе с ID {orderAssignment.OrderId}. Старый EmployeeID: {oldEmployeeId}, новый EmployeeID: {newEmployeeId}.");
+                Console.WriteLine($"[UPDATE]Обновлено назначение в заказе с ID {orderAssignment.OrderId}. Старый EmployeeID: {oldEmployeeId}, новый EmployeeID: {newEmployeeId}.");
             }
         }
 
@@ -499,7 +499,7 @@ namespace CarserviceConsoleApp
                 int employeeId = orderAssignment.EmployeeId;
                 context.OrderAssignments.Remove(orderAssignment);
                 await context.SaveChangesAsync();
-                Console.WriteLine($"Удалено назначение сотрудника с ID {employeeId} из заказа с ID {orderAssignment.OrderId}.");
+                Console.WriteLine($"[DELETE]Удалено назначение сотрудника с ID {employeeId} из заказа с ID {orderAssignment.OrderId}.");
             }
         }
     }
